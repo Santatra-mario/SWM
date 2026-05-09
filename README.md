@@ -1,47 +1,84 @@
-# signtool
+# 🔏 signtool
 
-> A command-line tool for **digital file signing and verification** using RSA 2048 + SHA-256 (PKCS1v15).
+> **Outil CLI de signature numérique de fichiers** basé sur RSA + SHA-256 (PKCS#1 v1.5).  
+> Signez, vérifiez et inspectez l'authenticité de n'importe quel fichier depuis le terminal.
 
-```
-signtool keygen --name mykey
-signtool sign   --key mykey_private.pem --file report.pdf
-signtool verify --key mykey_public.pem  --file report.pdf
-signtool info   report.pdf.sig
-```
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
+![Licence](https://img.shields.io/badge/licence-MIT-green)
+![Plateforme](https://img.shields.io/badge/plateforme-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 
 ---
 
-## Features
+## Sommaire
 
-| Feature | Details |
+1. [Présentation](#présentation)
+2. [Fonctionnalités](#fonctionnalités)
+3. [Installation](#installation)
+4. [Démarrage rapide](#démarrage-rapide)
+5. [Commandes](#commandes)
+   - [keygen](#-signtool-keygen----générer-une-paire-de-clés-rsa)
+   - [sign](#-signtool-sign----signer-un-ou-plusieurs-fichiers)
+   - [verify](#-signtool-verify----vérifier-une-signature)
+   - [info](#-signtool-info----inspecter-un-fichier-sig)
+6. [Format du fichier .sig](#format-du-fichier-sig)
+7. [Workflow complet](#workflow-complet)
+8. [Démos](#démos)
+9. [Structure du projet](#structure-du-projet)
+10. [Sécurité](#sécurité)
+11. [Dépendances](#dépendances)
+12. [Licence](#licence)
+
+---
+
+## Présentation
+
+`signtool` est un outil en ligne de commande qui permet de **signer numériquement** des fichiers à l'aide d'une clé privée RSA et de **vérifier** leur authenticité avec la clé publique correspondante.
+
+Chaque signature produit un fichier `.sig` au format JSON contenant :
+- la signature cryptographique (base64),
+- le hash SHA-256 du fichier original,
+- l'algorithme utilisé,
+- l'horodatage de signature,
+- et les métadonnées de l'outil.
+
+Cela garantit à la fois **l'authenticité** (le fichier provient bien du signataire) et **l'intégrité** (le fichier n'a pas été modifié).
+
+---
+
+## Fonctionnalités
+
+| Fonctionnalité | Détail |
 |---|---|
-| Algorithm | RSA (1024 / 2048 / 4096 bits) + SHA-256, PKCS#1 v1.5 padding |
-| Key format | PEM (standard OpenSSL format) |
-| Signature file | `.sig` — JSON with base64 signature, algorithm, timestamp, SHA-256 hash |
-| Private key protection | Optional AES passphrase encryption |
-| Batch signing | Glob patterns (`docs/*.pdf`) |
-| Output | Colored tables, progress spinners, and panels via **rich** |
-| Exit codes | `0` = valid / success, `1` = invalid / error |
+| 🔑 Algorithme | RSA (1024 / 2048 / 4096 bits) + SHA-256, padding PKCS#1 v1.5 |
+| 📄 Format des clés | PEM (compatible OpenSSL) |
+| 📦 Fichier de signature | `.sig` — JSON avec signature base64, algorithme, timestamp, hash SHA-256 |
+| 🔒 Protection de la clé | Chiffrement AES optionnel par passphrase |
+| 🗂️ Signature en masse | Patterns glob (`docs/*.pdf`) |
+| 🎨 Sortie enrichie | Tableaux colorés, spinners, panneaux via `rich` |
+| 🚦 Codes de retour | `0` = succès / signature valide, `1` = erreur / signature invalide |
+| 🖥️ Multiplateforme | Windows, Linux, macOS |
 
 ---
 
 ## Installation
 
-### Requirements
+### Prérequis
 
-- Python >= 3.8
+- Python **>= 3.8**
 - pip
 
-### From source (recommended)
+### Depuis les sources (recommandé)
 
 ```bash
+git clone <url-du-dépôt>
 cd signtool
 pip install -e .
 ```
 
-This registers the `signtool` command globally.
+La commande `signtool` est alors disponible globalement dans votre environnement Python.
 
-### Dependencies only
+### Dépendances uniquement
 
 ```bash
 pip install -r requirements.txt
@@ -49,264 +86,331 @@ pip install -r requirements.txt
 
 ---
 
-## Commands
+## Démarrage rapide
 
-### `signtool keygen` — Generate an RSA key pair
+```bash
+# 1. Générer une paire de clés RSA-2048
+signtool keygen --name maclef
+
+# 2. Signer un fichier
+signtool sign --key maclef_private.pem --file rapport.pdf
+
+# 3. Vérifier la signature
+signtool verify --key maclef_public.pem --file rapport.pdf
+
+# 4. Inspecter le fichier .sig
+signtool info rapport.pdf.sig
+```
+
+---
+
+## Commandes
+
+### 🔑 `signtool keygen` — Générer une paire de clés RSA
 
 ```
 signtool keygen [OPTIONS]
 ```
 
-| Option | Default | Description |
+Génère une paire de clés RSA (clé privée + clé publique) et les sauvegarde en format PEM.
+
+#### Options
+
+| Option | Défaut | Description |
 |---|---|---|
-| `--bits` | `2048` | Key size: `1024`, `2048`, or `4096` |
-| `--output-dir`, `-o` | `.` | Directory to save PEM files |
-| `--name`, `-n` | `key` | Base name for the files |
-| `--passphrase`, `-p` | *(none)* | Encrypt the private key with a passphrase |
+| `--bits` | `2048` | Taille de la clé : `1024`, `2048` ou `4096` bits |
+| `--output-dir`, `-o` | `.` | Répertoire de sortie pour les fichiers PEM |
+| `--name`, `-n` | `key` | Nom de base des fichiers générés |
+| `--passphrase`, `-p` | *(aucune)* | Passphrase pour chiffrer la clé privée (AES) |
 
-**Output files:**
+#### Fichiers générés
 
-- `{name}_private.pem` — Keep this **secret** (permissions set to `600` on POSIX)
-- `{name}_public.pem` — Share this freely
+| Fichier | Usage |
+|---|---|
+| `{name}_private.pem` | **Clé privée** — à conserver secrète (permissions `600` sur Linux/macOS) |
+| `{name}_public.pem` | **Clé publique** — à distribuer librement aux vérificateurs |
 
-**Examples:**
+#### Exemples
 
 ```bash
-# Default 2048-bit key pair named "key"
+# Paire de clés 2048 bits avec le nom par défaut
 signtool keygen
 
-# 4096-bit key pair in a specific directory
-signtool keygen --bits 4096 --output-dir ~/keys --name myproject
+# Paire de clés 4096 bits dans un répertoire dédié
+signtool keygen --bits 4096 --output-dir ~/mes-clefs --name projet
 
-# Password-protected private key
-signtool keygen --name mykey --passphrase "s3cr3tPassphrase"
+# Clé privée protégée par une passphrase
+signtool keygen --name maclef --passphrase "MonMotDePasse123"
 ```
 
 ---
 
-### `signtool sign` — Sign one or more files
+### ✍️ `signtool sign` — Signer un ou plusieurs fichiers
 
 ```
-signtool sign --key PRIVATE_KEY --file FILE [OPTIONS]
+signtool sign --key CLE_PRIVEE --file FICHIER [OPTIONS]
 ```
 
-| Option | Required | Description |
+Signe un ou plusieurs fichiers avec la clé privée RSA. Chaque fichier `foo.txt` signé produit un fichier `foo.txt.sig`.
+
+#### Options
+
+| Option | Requis | Description |
 |---|---|---|
-| `--key`, `-k` | Yes | Path to the RSA private key PEM file |
-| `--file`, `-f` | Yes (multiple) | File(s) to sign; repeatable; supports glob patterns |
-| `--output-dir`, `-o` | No | Directory for `.sig` files (default: same as each file) |
-| `--passphrase`, `-p` | No | Passphrase if the private key is encrypted |
+| `--key`, `-k` | Oui | Chemin vers la clé privée PEM |
+| `--file`, `-f` | Oui (répétable) | Fichier(s) à signer — supports les patterns glob et l'option multiple |
+| `--output-dir`, `-o` | Non | Répertoire pour les fichiers `.sig` (défaut : même dossier que le fichier) |
+| `--passphrase`, `-p` | Non | Passphrase si la clé privée est chiffrée |
 
-Each file `foo.bar` produces a companion `foo.bar.sig` containing:
+#### Exemples
+
+```bash
+# Signer un fichier unique
+signtool sign --key maclef_private.pem --file rapport.pdf
+
+# Signer plusieurs fichiers explicitement
+signtool sign --key maclef_private.pem \
+              --file doc1.pdf \
+              --file doc2.pdf \
+              --file contrat.docx
+
+# Signer tous les PDF d'un dossier (pattern glob)
+signtool sign --key maclef_private.pem --file "docs/*.pdf"
+
+# Stocker les .sig dans un répertoire séparé
+signtool sign --key maclef_private.pem \
+              --file "dist/*.tar.gz" \
+              --output-dir signatures/
+
+# Signer avec une clé protégée par passphrase
+signtool sign --key maclef_private.pem \
+              --file important.pdf \
+              --passphrase "MonMotDePasse123"
+```
+
+---
+
+### ✅ `signtool verify` — Vérifier une signature
+
+```
+signtool verify --key CLE_PUBLIQUE --file FICHIER [--sig FICHIER_SIG]
+```
+
+Vérifie l'authenticité et l'intégrité d'un fichier en deux étapes :
+1. **Hash SHA-256** — le fichier n'a pas été modifié.
+2. **Signature RSA** — la signature correspond bien à la clé publique.
+
+#### Options
+
+| Option | Requis | Description |
+|---|---|---|
+| `--key`, `-k` | Oui | Chemin vers la clé publique PEM |
+| `--file`, `-f` | Oui | Fichier à vérifier |
+| `--sig`, `-s` | Non | Chemin vers le `.sig` (défaut : `{fichier}.sig` dans le même dossier) |
+
+#### Codes de retour
+
+| Code | Signification |
+|---|---|
+| `0` | ✅ Signature **valide** — le fichier est authentique et intact |
+| `1` | ❌ Signature **invalide** — fichier falsifié ou mauvaise clé |
+
+#### Exemples
+
+```bash
+# Vérification simple (cherche automatiquement rapport.pdf.sig)
+signtool verify --key maclef_public.pem --file rapport.pdf
+
+# Spécifier manuellement le fichier .sig
+signtool verify --key maclef_public.pem \
+                --file rapport.pdf \
+                --sig  signatures/rapport.pdf.sig
+
+# Utilisation dans un script shell
+if signtool verify --key pub.pem --file archive.zip; then
+    echo "Archive authentique — installation autorisée."
+else
+    echo "ALERTE : le fichier a été falsifié !"
+    exit 1
+fi
+```
+
+---
+
+### 🔍 `signtool info` — Inspecter un fichier .sig
+
+```
+signtool info FICHIER_SIG
+```
+
+Affiche toutes les métadonnées contenues dans un fichier `.sig` dans un panneau formaté.
+
+#### Argument
+
+| Argument | Description |
+|---|---|
+| `SIG_FILE` | Chemin vers le fichier `.sig` à inspecter |
+
+#### Exemple
+
+```bash
+signtool info rapport.pdf.sig
+```
+
+**Sortie :**
+
+```
+ ╭─ Signature Metadata — rapport.pdf.sig ──────────────────────────────╮
+ │ ╭──────────────┬──────────────────────────────────────────────────╮ │
+ │ │ Field        │ Value                                            │ │
+ │ ├──────────────┼──────────────────────────────────────────────────┤ │
+ │ │ Sig file     │ /home/user/rapport.pdf.sig                       │ │
+ │ │ Format ver   │ 1                                                │ │
+ │ │ Tool         │ signtool v1.0.0                                  │ │
+ │ │ Algorithm    │ RSA-SHA256-PKCS1v15                              │ │
+ │ │ Filename     │ rapport.pdf                                      │ │
+ │ │ Signed at    │ 2024-06-15T14:32:11.045782+00:00                 │ │
+ │ │ SHA-256      │ e3b0c44298fc1c149afbf4c8996fb924...              │ │
+ │ │ Signature    │ AbCdEf1234...                                    │ │
+ │ │ Sig length   │ 344 chars (base64)                               │ │
+ │ ╰──────────────┴──────────────────────────────────────────────────╯ │
+ ╰──────────────────────────────────────────────────────────────────────╯
+```
+
+---
+
+## Format du fichier .sig
+
+Chaque signature est un fichier JSON lisible par l'humain :
 
 ```json
 {
   "version": 1,
   "tool": "signtool v1.0.0",
   "algorithm": "RSA-SHA256-PKCS1v15",
-  "timestamp": "2024-01-15T10:30:00.000000+00:00",
-  "filename": "foo.bar",
-  "sha256": "e3b0c44298fc1c149afb...",
-  "signature": "<base64-encoded RSA signature>"
+  "timestamp": "2024-06-15T14:32:11.045782+00:00",
+  "filename": "rapport.pdf",
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "signature": "AbCdEf1234...base64encodedRSAsignature...XyZ="
 }
 ```
 
-**Examples:**
-
-```bash
-# Sign a single file
-signtool sign --key mykey_private.pem --file report.pdf
-
-# Sign multiple files explicitly
-signtool sign --key mykey_private.pem \
-              --file doc1.pdf \
-              --file doc2.pdf \
-              --file contract.docx
-
-# Sign all PDFs in a directory (glob pattern)
-signtool sign --key mykey_private.pem --file "docs/*.pdf"
-
-# Sign and store .sig files in a separate directory
-signtool sign --key mykey_private.pem \
-              --file "build/*.zip" \
-              --output-dir signatures/
-
-# Sign with an encrypted key
-signtool sign --key mykey_private.pem \
-              --file important.pdf \
-              --passphrase "mySecret"
-```
-
----
-
-### `signtool verify` — Verify a file's signature
-
-```
-signtool verify --key PUBLIC_KEY --file FILE [--sig SIG_FILE]
-```
-
-| Option | Required | Description |
+| Champ | Type | Description |
 |---|---|---|
-| `--key`, `-k` | Yes | Path to the RSA public key PEM file |
-| `--file`, `-f` | Yes | File to verify |
-| `--sig`, `-s` | No | Path to the `.sig` file (default: `{file}.sig`) |
-
-**Exit codes:**
-
-- `0` — Signature is **valid**; the file has not been tampered with
-- `1` — Signature is **invalid** or an error occurred
-
-**Examples:**
-
-```bash
-# Verify using the default .sig path (report.pdf.sig)
-signtool verify --key mykey_public.pem --file report.pdf
-
-# Specify the .sig file explicitly
-signtool verify --key mykey_public.pem \
-                --file report.pdf \
-                --sig  signatures/report.pdf.sig
-
-# Use in a script (exit code 0 = valid)
-if signtool verify --key pub.pem --file archive.zip; then
-    echo "Archive is authentic."
-else
-    echo "WARNING: archive has been tampered with!"
-fi
-```
+| `version` | entier | Version du format (pour la rétrocompatibilité) |
+| `tool` | chaîne | Nom et version de l'outil ayant généré la signature |
+| `algorithm` | chaîne | Algorithme utilisé (`RSA-SHA256-PKCS1v15`) |
+| `timestamp` | chaîne | Date et heure de signature (ISO 8601, UTC) |
+| `filename` | chaîne | Nom du fichier signé |
+| `sha256` | chaîne | Hash SHA-256 hexadécimal du fichier original |
+| `signature` | chaîne | Signature RSA encodée en Base64 |
 
 ---
 
-### `signtool info` — Display signature metadata
+## Workflow complet
 
-```
-signtool info SIG_FILE
-```
-
-Prints a rich formatted panel with all metadata stored in the `.sig` file.
-
-**Example:**
+Voici un exemple de bout en bout pour distribuer et vérifier des artefacts de release :
 
 ```bash
-signtool info report.pdf.sig
-```
+# Étape 1 — Le développeur génère ses clés (une seule fois)
+signtool keygen --bits 2048 --output-dir ./clefs --name release
 
-**Sample output:**
-
-```
- Signature Metadata — report.pdf.sig
- ╭────────────────────┬────────────────────────────────────────────────╮
- │ Field              │ Value                                          │
- ├────────────────────┼────────────────────────────────────────────────┤
- │ Sig file           │ /home/user/report.pdf.sig                      │
- │ Format ver         │ 1                                              │
- │ Tool               │ signtool v1.0.0                                │
- │ Algorithm          │ RSA-SHA256-PKCS1v15                            │
- │ Filename           │ report.pdf                                     │
- │ Signed at          │ 2024-01-15T10:30:00.000000+00:00               │
- │ SHA-256            │ e3b0c44298fc1c149afbf4c8996fb924…              │
- │ Signature          │ AbCdEf12…                                      │
- │ Sig length         │ 344 chars (base64)                             │
- ╰────────────────────┴────────────────────────────────────────────────╯
-```
-
----
-
-## Full Workflow Example
-
-```bash
-# 1. Generate keys
-signtool keygen --bits 2048 --output-dir ./keys --name release
-
-# 2. Sign your release artifacts
-signtool sign --key keys/release_private.pem \
+# Étape 2 — Il signe les artefacts de la release
+signtool sign --key clefs/release_private.pem \
               --file "dist/*.tar.gz" \
               --output-dir dist/signatures/
 
-# 3. Share the public key + signatures with your users
+# Étape 3 — Il publie :
+#   - les artefacts (dist/*.tar.gz)
+#   - les signatures (dist/signatures/*.sig)
+#   - la clé publique (clefs/release_public.pem)
 
-# 4. Users verify the download
+# --- Côté utilisateur ---
+
+# Étape 4 — L'utilisateur vérifie le fichier téléchargé
 signtool verify --key release_public.pem \
-                --file myapp-1.0.tar.gz \
-                --sig  signatures/myapp-1.0.tar.gz.sig
+                --file monapp-1.0.tar.gz \
+                --sig  signatures/monapp-1.0.tar.gz.sig
 
-# 5. Inspect a .sig file for details
-signtool info signatures/myapp-1.0.tar.gz.sig
+# Étape 5 — Il inspecte les détails de la signature si besoin
+signtool info signatures/monapp-1.0.tar.gz.sig
 ```
 
 ---
 
-## Demo Scripts
+## Démos
 
-Run the complete demo to see all commands in action:
+Des scripts de démonstration complets sont inclus pour tester l'ensemble du workflow en une seule commande.
 
-**Windows:**
+**Windows :**
 
 ```bat
 demo.bat
 ```
 
-**Linux / macOS / WSL:**
+**Linux / macOS / WSL :**
 
 ```bash
 chmod +x demo.sh
 ./demo.sh
 ```
 
-The demo:
-1. Installs `signtool` in editable mode
-2. Creates sample text files
-3. Generates RSA-2048 and RSA-4096 key pairs
-4. Signs individual and multiple files
-5. Inspects a `.sig` file
-6. Verifies a valid signature ✓
-7. Demonstrates tamper detection (modifies a file and shows INVALID) ✗
+La démo effectue les 7 étapes suivantes :
+
+| Étape | Action |
+|---|---|
+| 1 | Installation des dépendances |
+| 2 | Création de fichiers texte d'exemple |
+| 3 | Génération d'une paire de clés RSA-2048 |
+| 4 | Génération d'une paire de clés RSA-4096 |
+| 5 | Signature d'un fichier unique, puis en lot |
+| 6 | Vérification d'une signature valide ✅ |
+| 7 | Détection de falsification (tamper detection) ❌ |
 
 ---
 
-## Project Structure
+## Structure du projet
 
 ```
 signtool/
-├── README.md            # This file
-├── requirements.txt     # Python dependencies
-├── setup.py             # Package & entry point definition
-├── demo.sh              # Bash demo script
-├── demo.bat             # Windows demo script
+├── README.md              ← Ce fichier
+├── requirements.txt       ← Dépendances Python (click, cryptography, rich)
+├── setup.py               ← Déclaration du paquet et du point d'entrée CLI
+├── demo.bat               ← Script de démonstration Windows
+├── demo.sh                ← Script de démonstration Linux/macOS
 └── signtool/
-    ├── __init__.py      # Version & package metadata
-    ├── cli.py           # Click CLI commands (keygen, sign, verify, info)
-    ├── keygen.py        # RSA key pair generation
-    ├── signer.py        # File signing logic
-    └── verifier.py      # Signature verification logic
+    ├── __init__.py        ← Version et métadonnées du paquet
+    ├── cli.py             ← Interface CLI (commandes Click + affichage Rich)
+    ├── keygen.py          ← Génération de paires de clés RSA
+    ├── signer.py          ← Logique de signature des fichiers
+    └── verifier.py        ← Logique de vérification des signatures
 ```
 
 ---
 
-## Security Notes
+## Sécurité
 
-- **Private key**: Never share your `_private.pem` file. Use `--passphrase` to add an extra layer of protection.
-- **Key size**: RSA-2048 is the minimum recommended size. Use RSA-4096 for long-term security.
-- **Algorithm**: SHA-256 + PKCS#1 v1.5 is widely supported and suitable for most use cases. For new systems, consider migrating to PSS padding in the future.
-- **Timestamps**: The timestamp in the `.sig` file is informational only (from the signing machine's clock) — it is **not** a trusted timestamp authority.
+> ⚠️ Ces recommandations sont importantes pour garantir la sécurité de vos signatures.
+
+- **Clé privée** : ne partagez **jamais** votre fichier `_private.pem`. Utilisez `--passphrase` pour le protéger par chiffrement AES.
+- **Taille de clé** : RSA-2048 est le minimum recommandé. Préférez RSA-4096 pour des données sensibles ou une sécurité à long terme.
+- **Algorithme** : SHA-256 + PKCS#1 v1.5 est largement supporté et approprié pour la plupart des usages. Pour les nouveaux systèmes, le padding PSS offre une sécurité accrue.
+- **Horodatage** : le champ `timestamp` dans le `.sig` est indicatif et basé sur l'horloge de la machine signataire. Il ne constitue **pas** un horodatage certifié (TSA).
+- **Distribution des clés** : distribuez votre clé publique via un canal sûr (site HTTPS officiel, empreinte vérifiée) pour éviter les attaques de substitution.
 
 ---
 
-## Dependencies
+## Dépendances
 
-| Package | Version | Purpose |
+| Paquet | Version minimale | Rôle |
 |---|---|---|
-| `click` | >= 8.1.0 | CLI framework |
-| `cryptography` | >= 41.0.0 | RSA key generation & signing |
-| `rich` | >= 13.0.0 | Colored terminal output |
+| [`click`](https://click.palletsprojects.com/) | >= 8.1.0 | Framework CLI |
+| [`cryptography`](https://cryptography.io/) | >= 41.0.0 | Génération de clés RSA, signature, vérification |
+| [`rich`](https://rich.readthedocs.io/) | >= 13.0.0 | Affichage terminal coloré (tableaux, panneaux, spinners) |
 
 ---
 
-## License
+## Licence
 
-MIT License — see [LICENSE](LICENSE) for details.
-#   s e c W e b M a i l  
- #   s e c W e b M a i l  
- #   S W M  
- #   S W M  
- 
+Ce projet est distribué sous licence **MIT**.  
+Vous êtes libre de l'utiliser, le modifier et le redistribuer, à condition de conserver la notice de copyright d'origine.
